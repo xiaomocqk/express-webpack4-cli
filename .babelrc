@@ -1,0 +1,7 @@
+{
+    /* Tree Shaking */
+    "presets": [
+        ["env", { "modules": false }],      // `npm install babel-preset-env --save-dev` , 其中 modules: false 为开启 tree-shaking
+        "stage-0"                        // `npm install babel-preset-stage-0 --save-dev` 支持 import() 异步组件
+    ]
+}

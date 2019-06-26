@@ -1,0 +1,221 @@
+const fs = require('fs');
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
+const WebpackMd5Hash = require('webpack-md5-hash');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+
+const {
+  prefix,
+  projectName,
+  
+  isDev,
+  cdn,
+  dev_,
+  
+  clientPath,
+  outputPath,
+} = require('./config/base.config');
+
+const projectPath = resolve(clientPath, projectName);
+const projectOutputName = prefix + projectName;
+const projectOutputPath = resolve(outputPath, projectOutputName);
+const publicPath = `${cdn}/${projectOutputName}/`;
+const { entry, htmlPlugins } = getFiles();
+
+function resolve(...dir) {
+  return path.resolve(__dirname, ...dir);
+}
+
+module.exports = {
+  mode: isDev ? 'development' : 'production',
+  devtool: isDev ? 'cheap-module-eval-source-map' : /* 'hidden-source-map' */'none',
+  entry: entry,
+  output: {
+    path: projectOutputPath,
+    publicPath,
+    filename: isDev ? 'js/[name].js' : 'js/[name].[chunkhash:8].js',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.js|vue$/,
+        enforce: 'pre',
+        use: 'eslint-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.js$/,
+        use: 'babel-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.html$/,
+        use: {
+          loader: 'html-loader',
+          options: {
+            minimize: !isDev,
+            removeAttributeQuotes: false,
+          }
+        }
+      },
+      {
+        test: /\.(le|c)ss$/,
+        use: [
+          isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
+          'css-loader',
+          'postcss-loader',
+          'less-loader'
+        ]
+      },
+      {
+        test: /\.scss$/,
+        use: [
+          isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
+          'css-loader',
+          'postcss-loader',
+          'sass-loader'
+        ]
+      },
+      {
+        test: /\.(jpe?g|png|gif|svg)$/,
+        use: {
+          loader: 'url-loader',
+          options: {
+            limit: 10000,
+            name: isDev ? 'images/[name].[ext]' : 'images/[hash:8].[ext]'
+          }
+        }
+      },
+      {
+        test: /\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/,
+        loader: 'url-loader',
+        options: {
+          limit: 10000,
+          name: isDev ? 'media/[name].[ext]' : 'media/[name].[hash:8].[ext]'
+        }
+      },
+      {
+        test: /\.(woff2?|eot|ttf|otf)(\?.*)?$/,
+        loader: 'url-loader',
+        options: {
+          limit: 10000,
+          name: isDev ? 'fonts/[name].[ext]' : 'fonts/[name].[hash:8].[ext]'
+        }
+      }
+    ]
+  },
+
+  plugins: [
+    ...htmlPlugins,
+    
+    // 针对 moment.js 打包体积过大问题
+    new webpack.ContextReplacementPlugin(/moment[/\\]locale$/, /zh-cn/),
+  ],
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        vendor: {
+          name: 'vendor',
+          chunks: 'all',
+          test: /node_modules/,
+          enforce: true
+        },
+        // common: {
+        //   name: 'vendor',// 不再单独生成一个 .js文件, 而是并入vendor
+        //   chunks: 'all',
+        //   // [*建议]在项目内新建, 如 utils/common.js 文件(即页面共有的代码, 如 $、fastclick、axios 这些共享库)
+        //   // 该文件内引用 reset.less, 那么打包时将单独多生成一个共有的 .css 文件
+        //   test: /common\.js$/,
+        //   enforce: true
+        // },
+      }
+    },
+  },
+  resolve: {
+    extensions: ['.js', '.vue', '.less', 'scss', '.json'],
+    alias: {
+      'vue$': 'vue/dist/vue.js',
+      '@': projectPath,
+    }
+  },
+  performance: {
+    hints: isDev ? false : 'warning' // 当打包的文件大于 244 KiB 是会在提出警告
+  }
+};
+
+if (isDev) {
+  // 开发模式
+  module.exports.plugins.push(
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.NamedModulesPlugin(), // HMR shows correct file names in console on update.
+    new webpack.NoEmitOnErrorsPlugin(),
+  );
+} else {
+  // 预发/生产模式
+  module.exports.optimization = {
+    ...module.exports.optimization,
+    minimize: true,
+    minimizer: [
+      new OptimizeCSSAssetsPlugin(),// 压缩 css 文件
+      new UglifyJsPlugin({
+        test: /\.js$/,
+        exclude: /\/node_modules/,
+        cache: resolve(projectOutputPath, '..', '.cache'),
+        parallel: true,// 并行打包
+        uglifyOptions: {
+          compress: {
+            drop_console: true // 去掉所有console.*
+          }
+        }
+      }),
+    ]
+  };
+
+  module.exports.plugins.push(
+    new CleanWebpackPlugin([
+      projectOutputPath,
+      resolve(projectOutputPath, `../${dev_}*`)
+    ]),
+    new WebpackMd5Hash(), // 结合 chunkhash 使用, 只改变修改的 js/css 文件的 hash 值, 使得未改动的 js/css 文件其打包后的 hash 较上一版本不变
+    new MiniCssExtractPlugin({
+      filename: 'css/[name].[contenthash:8].css',
+      chunkFilename: 'css/[id].[contenthash:8].css'
+    })
+  );
+}
+
+// 获取人口文件和对应的html
+function getFiles() {
+  const jsDir = resolve(projectPath, 'js');
+  const htmlDir = resolve(projectPath, 'views');
+  const entry = {};
+  const htmlPlugins = [];
+
+  fs.readdirSync(jsDir).forEach(file => {
+    const filename = file.match(/(.+)\.js$/)[1];
+    const htmlname = `${filename}.html`;
+    const htmlTemplate = resolve(htmlDir, htmlname);
+
+    entry[filename] = [
+      resolve(jsDir, file),
+      ...(isDev ? [htmlTemplate, 'webpack-hot-middleware/client?reload=true'] : [])
+    ];
+
+    htmlPlugins.push(
+      new HtmlWebpackPlugin({
+        template: htmlTemplate,
+        filename: htmlname,
+        chunks: ['vendor', filename],
+      })
+    );
+  });
+
+  return {
+    entry,
+    htmlPlugins
+  };
+}
