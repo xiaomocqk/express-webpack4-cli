@@ -1,21 +1,27 @@
 const fs = require('fs');
-const path = require('path');
+const { resolve } = require('path');
 const chalk = require('chalk');
 
 const { clientPath, routesPath } = require('../config/base.config.js');
-
-const resolve = (...dir) => path.resolve(__dirname, ...dir);
 const newProjectName = process.argv.slice(-1)[0];
 const newProjectCamelCaseName = newProjectName.replace(/(-|_)\w/g, match => match[1].toUpperCase());
 const clientTargetPath = resolve(clientPath, newProjectName);
 const routeFile = resolve(routesPath, `${newProjectName}.js`);
 
+let log = {
+  green: msg => console.log(chalk.green(msg)),
+  yellow: msg => console.log(chalk.yellow(msg)),
+  red: msg => console.log(chalk.red(msg)),
+  magenta: msg => console.log(chalk.magenta(msg)),
+};
+
+
 if (fs.existsSync(clientTargetPath)) {
-  console.log(chalk.yellow(`[Fail] ${resolve(clientTargetPath)} has already existed.`));
+  log.yellow(`[Fail] ${resolve(clientTargetPath)} has already existed.`);
 } else if(fs.existsSync(routeFile)){
-  console.log(chalk.yellow(`[Fail] ${resolve(routeFile)} has already existed.`));
+  log.yellow(`[Fail] ${resolve(routeFile)} has already existed.`);
 } else {
-  console.log(chalk.green(`[Info] Directories and files has been created:`));
+  log.green(`[Info] Directories and files has been created:`);
   createDir();
   createDir('js');
   createDir('views');
@@ -28,7 +34,7 @@ if (fs.existsSync(clientTargetPath)) {
 function createDir(dirname = '') {
   const path = resolve(clientTargetPath, dirname);
   fs.mkdirSync(path);
-  console.log(chalk.green(`   + ${path}`));
+  log.green(`   + ${path}`);
 }
 
 function createFiles() {
@@ -60,10 +66,10 @@ module.exports = router => {
   });
 };`);
 
-  console.log(chalk.green(`   + ${jsfile}`));
-  console.log(chalk.green(`   + ${htmlfile}`));
-  console.log(chalk.green(`   + ${cssfile}`) + '\n');
-  console.log(chalk.green(`   + ${routeFile}`) + '\n');
+  log.green(`   + ${jsfile}`);
+  log.green(`   + ${htmlfile}`);
+  log.green(`   + ${cssfile}`) + '\n';
+  log.green(`   + ${routeFile}`) + '\n';
 
-  console.log(chalk.magenta(`[Tips] Now run "npm run dev ${newProjectName}" to start your project.`));
+  log.magenta(`[Tips] Now run "npm run dev ${newProjectName}" to start your project.`);
 }
