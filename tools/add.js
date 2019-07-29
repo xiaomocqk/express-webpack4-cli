@@ -4,7 +4,7 @@ const chalk = require('chalk');
 
 const { clientPath, routesPath } = require('../config/base.config.js');
 const newProjectName = process.argv.slice(-1)[0];
-const newProjectCamelCaseName = newProjectName.replace(/(-|_)\w/g, match => match[1].toUpperCase());
+// const newProjectCamelCaseName = newProjectName.replace(/(-|_)\w/g, match => match[1].toUpperCase());
 const clientTargetPath = resolve(clientPath, newProjectName);
 const routeFile = resolve(routesPath, `${newProjectName}.js`);
 
@@ -61,7 +61,7 @@ function createFiles() {
 `const { prefix } = require('../../config/base.config');
 
 module.exports = router => {
-  router.get('/${newProjectCamelCaseName}/', (req, res) => {
+  router.get('/${newProjectName}/', (req, res) => {
     res.render(\`\${prefix}${newProjectName}/index\`);
   });
 };`);

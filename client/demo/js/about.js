@@ -1,5 +1,5 @@
 import '../styles/common.css';
-import '../styles/about.scss';
+import '../styles/about.less';
 import Vue from 'vue';
 import '../utils/common';
 

@@ -24,14 +24,14 @@ module.exports = async app => {
       spinner.stop();
       console.log(chalk.bgGreen('\n √ Build done ') + '\n');
       console.log(chalk.magenta(`[Tips] visit: http://localhost:${port}/${projectName}/`));
-      console.log(chalk.magenta(`            : http://${ip()}:${port}/${projectName}/`) + '\n');
+      console.log(chalk.magenta(`            : http://${ip}:${port}/${projectName}/`) + '\n');
     }, 0);
   });
 
   const middleware = webpackDevMiddleware(compiler, {
     publicPath: webpackConfig.output.publicPath,
-    // html only
-    writeToDisk: filePath => /\.html$/.test(filePath),
+    // html image
+    writeToDisk: filePath => /\.(html|je?pg|png|gif|bmp)$/.test(filePath),
   });
 
   // express应用加入 webpack 构建
